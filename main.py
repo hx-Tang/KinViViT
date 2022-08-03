@@ -14,6 +14,10 @@ from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
+from models.mobilenetv2 import MobileNetV2
+from models.vivit import ViViT
+
+
 from cpu import ConfigArgumentParser, EvalHook, Trainer, save_args, set_random_seed, setup_logger
 
 logger = logging.getLogger(__name__)
