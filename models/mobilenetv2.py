@@ -104,7 +104,6 @@ class MobileNetV2(nn.Module):
             nn.Dropout(0.2),
             nn.Linear(self.last_channel, num_classes),
         )
-        self.softmax = nn.Softmax()
         self._initialize_weights()
 
     def forward(self, x):
@@ -112,7 +111,6 @@ class MobileNetV2(nn.Module):
         x = F.avg_pool3d(x, x.data.size()[-3:])
         x = x.view(x.size(0), -1)
         x = self.classifier(x)
-        x = self.softmax(x)
         return x
 
     def _initialize_weights(self):
