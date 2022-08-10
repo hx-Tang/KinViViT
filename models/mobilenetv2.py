@@ -9,8 +9,6 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 
-
-
 def conv_bn(inp, oup, stride):
     return nn.Sequential(
         nn.Conv3d(inp, oup, kernel_size=3, stride=stride, padding=(1,1,1), bias=False),
@@ -68,7 +66,7 @@ class InvertedResidual(nn.Module):
 
 
 class MobileNetV2(nn.Module):
-    def __init__(self, num_classes=1000, sample_size=224, width_mult=1.):
+    def __init__(self, num_classes=100, sample_size=224, width_mult=1.):
         super(MobileNetV2, self).__init__()
         block = InvertedResidual
         input_channel = 32
@@ -106,7 +104,7 @@ class MobileNetV2(nn.Module):
             nn.Dropout(0.2),
             nn.Linear(self.last_channel, num_classes),
         )
-
+        self.softmax = nn.Softmax()
         self._initialize_weights()
 
     def forward(self, x):
@@ -114,6 +112,7 @@ class MobileNetV2(nn.Module):
         x = F.avg_pool3d(x, x.data.size()[-3:])
         x = x.view(x.size(0), -1)
         x = self.classifier(x)
+        x = self.softmax(x)
         return x
 
     def _initialize_weights(self):
@@ -163,7 +162,7 @@ def get_model(**kwargs):
 
 
 if __name__ == "__main__":
-    model = get_model(num_classes=600, sample_size=112, width_mult=1.)
+    model = get_model(num_classes=100, sample_size=112, width_mult=1.)
     model = model.cuda()
     model = nn.DataParallel(model, device_ids=None)
     print(model)

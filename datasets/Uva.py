@@ -2,7 +2,6 @@ import random
 import torch
 from PIL import Image
 from torch.utils.data import Dataset
-import numpy as np
 import os
 import glob
 
@@ -33,10 +32,60 @@ class UVA(Dataset):
         return len(self.vids)
 
 
+class UVAage(Dataset):
+    def __init__(self, data_path, label, transform=None):
+        self.data_path = data_path
+        self.step = [1, 2]
+        self.label = label
+        self.transform = transform
+
+    def load_video(self, file_name):
+        video_path = self.data_path + '/' + file_name
+        frames = sorted(glob.glob(video_path[:-4] + '_aligned/*.bmp'))
+        nframes = len(frames)
+
+        step = random.sample(self.step, 1)[0]
+
+        try:
+            start_idx = random.randint(0, int(nframes - 32 * step))
+        except:
+            start_idx = 0
+            step = 1
+        video = [Image.open(frames[start_idx + i * step]).convert('RGB') for i in range(32)]
+
+        if self.transform is not None:
+            video = [self.transform(img) for img in video]
+            video = torch.stack(video, 0).permute(1, 0, 2, 3)
+
+        return video
+
+    def __len__(self):
+        return len(self.label)
+
+    def __getitem__(self, index):
+        file_name, age = self.label[index]
+        video = self.load_video(file_name)
+        age = int(age)
+        return video, age
+
+
+def load_age(label_path):
+
+    f = open(label_path, 'r')
+    lines = f.readlines()[5:]
+    pairs = []
+    for line in lines:
+        details = line.split('\t')
+        filename = details[0]
+        age = details[3]
+        pairs.append((filename, age))
+    return pairs
+
+
 class UVAts(Dataset):
     def __init__(self, data_path, label, anchor_transform=None, posneg_transform=None):
         self.data_path = data_path
-        self.step = [2, 3]
+        self.step = [1, 2]
 
         self.label = label
 
@@ -49,18 +98,19 @@ class UVAts(Dataset):
         nframes = len(frames)
         step = random.sample(self.step, 1)[0]
 
-        start_idx = random.randint(0, nframes - 16 * step)
+        start_idx = random.randint(0, nframes - 32 * step)
         # video = [Image.open(frames[start_idx + i * step]).convert('RGB') for i in range(16)]
         image = Image.open(frames[start_idx + step]).convert('RGB')
 
         return image
 
     def __len__(self):
-        return len(self.label)
+        return 2*len(self.label)
 
     def __getitem__(self, index):
+        index = index//2
         anchor_idx = list(self.label.keys())[index]
-        target = anchor_idx
+        target = int(anchor_idx)
         anchor = self.load_video(anchor_idx)
         if self.anchor_transform is not None:
             anchor = self.anchor_transform(anchor)
@@ -91,13 +141,23 @@ def load_label(label_path, split=1., shuff=False):
 
 
 if __name__ == '__main__':
-    data_path = 'D:/文档/硕士/Thesis/UvA-NEMO_SMILE_DATABASE/aligned'
-    label_path = 'D:/文档/硕士/Thesis/UvA-NEMO_SMILE_DATABASE/UvA-NEMO_Smile_Database_Kinship_Labels.txt'
 
-    label, _ = load_label(label_path, 0.8, True)
+    label_path = 'D:/文档/硕士/Thesis/UvA-NEMO_SMILE_DATABASE/UvA-NEMO_Smile_Database_File_Details.txt'
+    data_path = 'D:/文档/硕士/Thesis/UvA-NEMO_SMILE_DATABASE/aligned'
+
+    label = load_age(label_path)
     print(label)
 
-    dataset = UVAts(data_path, label)
-    for i in range(len(dataset)):
-        anchor, posneg, target = dataset.__getitem__(i)
-        print(target)
+    import torchvision.transforms as transforms
+    transform = transforms.Compose(
+        [transforms.ToTensor()])
+
+    dataset = UVAage(data_path, label, transform)
+
+    from torch.utils.data import DataLoader
+    train_loader = DataLoader(
+        dataset, batch_size=16, shuffle=True, num_workers=4)
+
+    for i, data in enumerate(train_loader):
+        inputs, labels = data
+    print('done')

@@ -10,7 +10,7 @@ import umap
 import record_keeper
 from cycler import cycler
 from torchvision import datasets, transforms
-from datasets.Uva import UVAts, load_label
+from datasets.Uva import UVAts, load_label, CIFAR100TwoStreamDataset
 
 import pytorch_metric_learning
 import pytorch_metric_learning.utils.logging_presets as logging_presets
@@ -86,7 +86,20 @@ train_label, val_label = load_label(label_path, 0.8, True)
 train_dataset = UVAts(data_path, train_label,train_transform, train_transform)
 val_dataset = UVAts(data_path, val_label,val_transform, val_transform)
 
-
+# Download and create datasets
+# original_train = datasets.CIFAR100(
+#     root="CIFAR100_Dataset", train=True, transform=None, download=True
+# )
+# original_val = datasets.CIFAR100(
+#     root="CIFAR100_Dataset", train=False, transform=None, download=True
+# )
+#
+# train_dataset = CIFAR100TwoStreamDataset(
+#     original_train, anchor_transform=train_transform, posneg_transform=train_transform
+# )
+# val_dataset = CIFAR100TwoStreamDataset(
+#     original_val, anchor_transform=val_transform, posneg_transform=val_transform
+# )
 
 # Set the loss function
 loss = losses.TripletMarginLoss(margin=0.2)
@@ -100,7 +113,7 @@ miner = miners.TripletMarginMiner(margin=0.2)
 # )
 
 # Set other training parameters
-batch_size = 12
+batch_size = 8
 num_epochs = 4
 
 # Package the above stuff into dictionaries.
@@ -146,7 +159,7 @@ def visualizer_hook(umapper, umap_embeddings, labels, split_name, keyname, *args
 # Create the tester
 tester = testers.GlobalTwoStreamEmbeddingSpaceTester(
     end_of_testing_hook=hooks.end_of_testing_hook,
-    visualizer=umap.UMAP(n_neighbors=50),
+    visualizer=umap.UMAP(n_neighbors=2),
     visualizer_hook=visualizer_hook,
     dataloader_num_workers=2,
     accuracy_calculator=AccuracyCalculator(k="max_bin_count"),
