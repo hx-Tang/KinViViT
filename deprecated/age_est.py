@@ -29,9 +29,9 @@ def main():
     valset = UVAage(data_path, label[int(0.8*len(label)):], transform)
 
     train_loader = DataLoader(
-        trainset, batch_size=16, shuffle=True, num_workers=4)
+        trainset, batch_size=4, shuffle=True, num_workers=4)
     val_loader = DataLoader(
-        valset, batch_size=16, shuffle=True, num_workers=4)
+        valset, batch_size=4, shuffle=True, num_workers=4)
 
     model = MobileNetV2(num_classes=100, sample_size=112, width_mult=1.)
 

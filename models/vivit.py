@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
-from module import Attention, PreNorm, FeedForward
+from models.module import Attention, PreNorm, FeedForward
 import numpy as np
 
 
@@ -36,7 +36,7 @@ class ViViT(nn.Module):
         num_patches = (image_size // patch_size) ** 2
         patch_dim = in_channels * patch_size ** 2
         self.to_patch_embedding = nn.Sequential(
-            Rearrange('b t c (h p1) (w p2) -> b t (h w) (p1 p2 c)', p1=patch_size, p2=patch_size),
+            Rearrange('b c t (h p1) (w p2) -> b t (h w) (p1 p2 c)', p1=patch_size, p2=patch_size),
             nn.Linear(patch_dim, dim),
         )
 
@@ -58,7 +58,6 @@ class ViViT(nn.Module):
     def forward(self, x):
         x = self.to_patch_embedding(x)
         b, t, n, _ = x.shape
-        print(b, t, n)
 
         cls_space_tokens = repeat(self.space_token, '() n d -> b t n d', b=b, t=t)
         x = torch.cat((cls_space_tokens, x), dim=2)
@@ -80,9 +79,9 @@ class ViViT(nn.Module):
 
 
 if __name__ == "__main__":
-    img = torch.ones([1, 16, 3, 224, 224]).cuda()
+    img = torch.ones([16, 3, 32, 112, 112]).cuda()
 
-    model = ViViT(224, 16, 100, 16).cuda()
+    model = ViViT(112, 16, 100, 32).cuda()
     parameters = filter(lambda p: p.requires_grad, model.parameters())
     parameters = sum([np.prod(p.size()) for p in parameters]) / 1_000_000
     print('Trainable Parameters: %.3fM' % parameters)
