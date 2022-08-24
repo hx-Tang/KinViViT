@@ -1,17 +1,17 @@
+import random
+from datetime import datetime
+import numpy as np
+
 import torch
+import torchvision.transforms as transforms
 from torch.optim import Adadelta
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import DataLoader
-
 from torch.utils.tensorboard import SummaryWriter
-from datetime import datetime
-import random
 from tqdm import tqdm
 
-from models.mobilenetv2 import MobileNetV2
-from models.vivit import ViViT
 from datasets.Uva import UVAtriplet
-import torchvision.transforms as transforms
+from models import video_transformer, vivit, mobilenetv2
 
 
 def main():
@@ -22,35 +22,70 @@ def main():
     file_detail = 'D:/文档/硕士/Thesis/UvA-NEMO_SMILE_DATABASE/UvA-NEMO_Smile_Database_File_Details.txt'
     kin_label = 'D:/文档/硕士/Thesis/UvA-NEMO_SMILE_DATABASE/UvA-NEMO_Smile_Database_Kinship_Labels.txt'
 
-    label = UVAtriplet.load_label(file_detail, kin_label)
-    random.shuffle(label)
+    # file_detail = UVAtriplet.read_file(file_detail)
+    # kin_label = UVAtriplet.read_file(kin_label)
+    #
+    # random.shuffle(kin_label)
+    #
+    # train_label = UVAtriplet.load_label(file_detail, kin_label[:int(0.8 * len(kin_label))])
+    # test_label = UVAtriplet.load_label(file_detail, kin_label[int(0.8 * len(kin_label)):], False)
+    #
+    # random.shuffle(train_label)
+    # np.save('train_label.npy', train_label)
+    #
+    # random.shuffle(test_label)
+    # np.save('test_label.npy', test_label)
+    train_label = np.load('train_label.npy')
+    test_label = np.load('test_label.npy')
 
     transform = transforms.Compose(
         [transforms.ToTensor()])
 
-    trainset = UVAtriplet(data_path, label[:int(0.8*len(label))], transform)
-    valset = UVAtriplet(data_path, label[int(0.8*len(label)):], transform)
+    trainset = UVAtriplet(data_path, train_label, transform)
+    valset = UVAtriplet(data_path, test_label, transform)
 
     train_loader = DataLoader(
         trainset, batch_size=4, shuffle=True, num_workers=4)
     val_loader = DataLoader(
         valset, batch_size=4, shuffle=True, num_workers=4)
 
-    model = MobileNetV2(num_classes=100, sample_size=112, width_mult=1.)
-    # model = ViViT(112, 16, 100, 32)
+    model = mobilenetv2.MobileNetV2(num_classes=128, sample_size=112, width_mult=1.)
+    pre_train_dict = torch.load('pretrain/kinetics_mobilenetv2_1.0x_RGB_16_best.pth')
+
+    model_dict = {k[7:]: v for k, v in pre_train_dict['state_dict'].items()}
+
+    model_dict.pop('classifier.1.bias')
+    model_dict.pop('classifier.1.weight')
+
+    model.load_state_dict(model_dict, strict=False)
+
+    # model = ViViT(112, 16, 128, 32)
+
+    # model = video_transformer.ViViT(num_frames=32,
+    #                                 img_size=112,
+    #                                 patch_size=16,
+    #                                 embed_dims=128,
+    #                                 num_heads=16,
+    #                                 num_transformer_layers=4,
+    #                                 pretrained='pretrain/vivit_model.pth',
+    #                                 weights_from='kinetics',
+    #                                 attention_type='divided_space_time',
+    #                                 use_learnable_pos_emb=False,
+    #                                 return_cls_token=False)
 
     model.to(device)
 
     params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = Adadelta(params, lr=1.0)
-    lr_scheduler = StepLR(optimizer, step_size=3, gamma=0.1)
+    optimizer = Adadelta(params, lr=0.1
+                         )
+    lr_scheduler = StepLR(optimizer, step_size=20, gamma=0.1)
 
     loss_fn = torch.nn.TripletMarginLoss()
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     writer = SummaryWriter('runs/triplet_trainer_{}'.format(timestamp))
 
-    EPOCHS = 10
+    EPOCHS = 60
 
     for epoch in range(EPOCHS):
         print('EPOCH {}:'.format(epoch + 1))
@@ -69,6 +104,9 @@ def main():
                            {'Training': avg_loss, 'Validation': avg_vloss},
                            epoch + 1)
         writer.flush()
+
+        if (epoch + 1) % 20 == 0:
+            torch.save(model.state_dict(), 'checkpoint/' + str(epoch + 1) + '_3d_pretrain_argu.pth')
 
 
 def train_one_epoch(epoch_index, tb_writer, model, train_loader, optimizer, loss_fn, device):

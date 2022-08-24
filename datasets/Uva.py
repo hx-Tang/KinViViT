@@ -62,9 +62,14 @@ class UVAtriplet(UVA):
         self.label = label
 
     @staticmethod
-    def load_label(file_detail, kin_label):
-        f = open(file_detail, 'r')
+    def read_file(path):
+        f = open(path, 'r')
         lines = f.readlines()[5:]
+        return lines
+
+    @staticmethod
+    def load_label(file_detail, kin_label, train=True):
+        lines = file_detail
         file2code = {}
         code2file = defaultdict(list)
         for line in lines:
@@ -74,8 +79,7 @@ class UVAtriplet(UVA):
             file2code[filename] = code
             code2file[code].append(filename)
 
-        f = open(kin_label, 'r')
-        lines = f.readlines()[5:]
+        lines = kin_label
         kindic1 = defaultdict(list)
         kindic2 = defaultdict(list)
         for line in lines:
@@ -90,13 +94,15 @@ class UVAtriplet(UVA):
         label = []
         for file, code in file2code.items():
             if len(kindic[code])>0:
-                pos_code = random.sample(kindic[code], 1)[0]
-                pos = random.sample(code2file[pos_code], 1)[0]
-                neg_list = list(code2file.keys())
-                neg_list.remove(pos_code)
-                neg_code = random.sample(neg_list, 1)[0]
-                neg = random.sample(code2file[neg_code], 1)[0]
-                label.append((file, pos, neg))
+                argu = 4 if train else 1
+                for k in range(argu):
+                    pos_code = random.sample(kindic[code], 1)[0]
+                    pos = random.sample(code2file[pos_code], 1)[0]
+                    neg_list = list(code2file.keys())
+                    neg_list.remove(pos_code)
+                    neg_code = random.sample(neg_list, 1)[0]
+                    neg = random.sample(code2file[neg_code], 1)[0]
+                    label.append((file, pos, neg))
         return label
 
     def __len__(self):
