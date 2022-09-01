@@ -1,3 +1,4 @@
+import argparse
 import random
 from datetime import datetime
 import numpy as np
@@ -10,103 +11,108 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from datasets.Uva import UVAtriplet
+from datasets.Uva import UVAtriplet, load_subjects, gen_triplets
 from models import video_transformer, vivit, mobilenetv2
+
+parser = argparse.ArgumentParser(description='for face verification')
+parser.add_argument("-model", help="used model", default='vivit', type=str)
+parser.add_argument("-lr", help="learning rate", default=0.001, type=float)
+parser.add_argument("-batch_size", help="batch size", default=4, type=int)
+parser.add_argument("-freeze", help="freeze backbone", default=False, type=bool)
+parser.add_argument("-fold", help="fold start", default=0, type=int)
+parser.add_argument("-step_size", help="lr step_size", default=20, type=int)
 
 
 def main():
+    args = parser.parse_args()
+
     device = torch.device('cuda')
 
     data_path = 'D:/文档/硕士/Thesis/UvA-NEMO_SMILE_DATABASE/aligned'
 
-    file_detail = 'D:/文档/硕士/Thesis/UvA-NEMO_SMILE_DATABASE/UvA-NEMO_Smile_Database_File_Details.txt'
-    kin_label = 'D:/文档/硕士/Thesis/UvA-NEMO_SMILE_DATABASE/UvA-NEMO_Smile_Database_Kinship_Labels.txt'
-
-    # file_detail = UVAtriplet.read_file(file_detail)
-    # kin_label = UVAtriplet.read_file(kin_label)
-    #
-    # random.shuffle(kin_label)
-    #
-    # train_label = UVAtriplet.load_label(file_detail, kin_label[:int(0.8 * len(kin_label))])
-    # test_label = UVAtriplet.load_label(file_detail, kin_label[int(0.8 * len(kin_label)):], False)
-    #
-    # random.shuffle(train_label)
-    # np.save('train_label.npy', train_label)
-    #
-    # random.shuffle(test_label)
-    # np.save('test_label.npy', test_label)
-    train_label = np.load('train_label.npy')
-    test_label = np.load('test_label.npy')
-
     transform = transforms.Compose(
         [transforms.ToTensor()])
-
-    trainset = UVAtriplet(data_path, train_label, transform)
-    valset = UVAtriplet(data_path, test_label, transform)
-
-    train_loader = DataLoader(
-        trainset, batch_size=4, shuffle=True, num_workers=4)
-    val_loader = DataLoader(
-        valset, batch_size=4, shuffle=True, num_workers=4)
-
-    model = mobilenetv2.MobileNetV2(num_classes=128, sample_size=112, width_mult=1.)
-    pre_train_dict = torch.load('pretrain/kinetics_mobilenetv2_1.0x_RGB_16_best.pth')
-
-    model_dict = {k[7:]: v for k, v in pre_train_dict['state_dict'].items()}
-
-    model_dict.pop('classifier.1.bias')
-    model_dict.pop('classifier.1.weight')
-
-    model.load_state_dict(model_dict, strict=False)
-
-    # model = ViViT(112, 16, 128, 32)
-
-    # model = video_transformer.ViViT(num_frames=32,
-    #                                 img_size=112,
-    #                                 patch_size=16,
-    #                                 embed_dims=128,
-    #                                 num_heads=16,
-    #                                 num_transformer_layers=4,
-    #                                 pretrained='pretrain/vivit_model.pth',
-    #                                 weights_from='kinetics',
-    #                                 attention_type='divided_space_time',
-    #                                 use_learnable_pos_emb=False,
-    #                                 return_cls_token=False)
-
-    model.to(device)
-
-    params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = Adadelta(params, lr=0.1
-                         )
-    lr_scheduler = StepLR(optimizer, step_size=20, gamma=0.1)
-
-    loss_fn = torch.nn.TripletMarginLoss()
 
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     writer = SummaryWriter('runs/triplet_trainer_{}'.format(timestamp))
 
-    EPOCHS = 60
+    EPOCHS = 40
 
-    for epoch in range(EPOCHS):
-        print('EPOCH {}:'.format(epoch + 1))
-        # train for one epoch, printing every 10 iterations
-        avg_loss = train_one_epoch(epoch, writer, model, train_loader, optimizer, loss_fn, device)
-        # update the learning rate
-        lr_scheduler.step()
-        # evaluate on the test dataset
-        avg_vloss = evaluate(model, val_loader, loss_fn, device)
+    for fold in range(args.fold, 5):
+        train_label = np.load('fold_argu/train_label_fold'+str(fold+1)+'.npy')
+        test_label = np.load('fold_argu/test_label_fold'+str(fold+1)+'.npy')
 
-        print('LOSS train {} valid {}'.format(avg_loss, avg_vloss))
+        trainset = UVAtriplet(data_path, train_label, transform)
+        valset = UVAtriplet(data_path, test_label, transform)
 
-        # Log the running loss averaged per batch
-        # for both training and validation
-        writer.add_scalars('Training vs. Validation Loss',
-                           {'Training': avg_loss, 'Validation': avg_vloss},
-                           epoch + 1)
-        writer.flush()
+        train_loader = DataLoader(
+            trainset, batch_size=args.batch_size, shuffle=True, num_workers=4)
+        val_loader = DataLoader(
+            valset, batch_size=args.batch_size, shuffle=True, num_workers=4)
 
-        if (epoch + 1) % 20 == 0:
-            torch.save(model.state_dict(), 'checkpoint/' + str(epoch + 1) + '_3d_pretrain_argu.pth')
+        if args.model == '3dcnn':
+            model = mobilenetv2.MobileNetV2(num_classes=128, sample_size=112, width_mult=1.)
+            pre_train_dict = torch.load('pretrain/kinetics_mobilenetv2_1.0x_RGB_16_best.pth')
+
+            model_dict = {k[7:]: v for k, v in pre_train_dict['state_dict'].items()}
+
+            model_dict.pop('classifier.1.bias')
+            model_dict.pop('classifier.1.weight')
+
+            model.load_state_dict(model_dict, strict=False)
+
+            if args.freeze:
+                i = 0
+                for child in model.children():
+                    i += 1
+                    if i < 2:
+                        for param in child.parameters():
+                            param.requires_grad = False
+
+        elif args.model == 'vivit':
+            model = video_transformer.ViViT(num_frames=16,
+                                            img_size=112,
+                                            patch_size=16,
+                                            embed_dims=128,
+                                            num_heads=16,
+                                            num_transformer_layers=4,
+                                            pretrained='pretrain/vivit_model.pth',
+                                            weights_from='kinetics',
+                                            attention_type='divided_space_time',
+                                            use_learnable_pos_emb=False,
+                                            return_cls_token=False)
+        else:
+            raise Exception("Sorry, no model found")
+
+        model.to(device)
+
+        params = [p for p in model.parameters() if p.requires_grad]
+        optimizer = Adadelta(params, lr=args.lr
+                             )
+        lr_scheduler = StepLR(optimizer, step_size=args.step_size, gamma=0.1)
+
+        loss_fn = torch.nn.TripletMarginLoss()
+
+        for epoch in range(EPOCHS):
+            print('FOLD {} EPOCH {}:'.format(fold + 1 , epoch + 1))
+            # train for one epoch, printing every 10 iterations
+            avg_loss = train_one_epoch(epoch, writer, model, train_loader, optimizer, loss_fn, device)
+            # update the learning rate
+            lr_scheduler.step()
+            # evaluate on the test dataset
+            avg_vloss = evaluate(model, val_loader, loss_fn, device)
+
+            print('LOSS train {} valid {}'.format(avg_loss, avg_vloss))
+
+            # Log the running loss averaged per batch
+            # for both training and validation
+            writer.add_scalars('Training vs. Validation Loss',
+                               {'Training': avg_loss, 'Validation': avg_vloss},
+                               epoch + 1)
+            writer.flush()
+
+            if (epoch + 1) % 10 == 0:
+                torch.save(model.state_dict(), 'checkpoint/'+args.model+'/' + str(epoch + 1) + 'fold'+str(fold+1)+'.pth')
 
 
 def train_one_epoch(epoch_index, tb_writer, model, train_loader, optimizer, loss_fn, device):

@@ -7,7 +7,7 @@ from datasets.Uva import UVAtriplet
 from models import video_transformer
 from metrics import verification
 from metrics.utils import gen_plot
-
+from models import video_transformer, vivit, mobilenetv2
 
 import numpy as np
 from tqdm import tqdm
@@ -18,23 +18,27 @@ def eval():
 
     data_path = 'D:/文档/硕士/Thesis/UvA-NEMO_SMILE_DATABASE/aligned'
 
-    model = video_transformer.ViViT(num_frames=32,
-                                    img_size=112,
-                                    patch_size=16,
-                                    embed_dims=128,
-                                    num_heads=16,
-                                    num_transformer_layers=4,
-                                    pretrained='pretrain/vivit_model.pth',
-                                    weights_from='kinetics',
-                                    attention_type='divided_space_time',
-                                    use_learnable_pos_emb=False,
-                                    return_cls_token=False)
-    pre_train_dict = torch.load('checkpoint/60_vivit_pretrain_argu.pth')
+    # model = video_transformer.ViViT(num_frames=16,
+    #                                 img_size=112,
+    #                                 patch_size=16,
+    #                                 embed_dims=128,
+    #                                 num_heads=16,
+    #                                 num_transformer_layers=4,
+    #                                 pretrained='pretrain/vivit_model.pth',
+    #                                 weights_from='kinetics',
+    #                                 attention_type='divided_space_time',
+    #                                 use_learnable_pos_emb=False,
+    #                                 return_cls_token=False)
+    # pre_train_dict = torch.load('checkpoint/vivit/40fold1.pth')
+    # model.load_state_dict(pre_train_dict)
+
+    model = mobilenetv2.MobileNetV2(num_classes=128, sample_size=112, width_mult=1.)
+    pre_train_dict = torch.load('checkpoint/bak2/3dcnn/40fold1.pth')
     model.load_state_dict(pre_train_dict)
 
     model.to(device)
 
-    test_label = np.load('test_label.npy')
+    test_label = np.load('folds/test_label_fold1.npy')
 
     transform = transforms.Compose(
         [transforms.ToTensor()])
@@ -42,7 +46,7 @@ def eval():
     valset = UVAtriplet(data_path, test_label, transform)
 
     val_loader = DataLoader(
-        valset, batch_size=1, shuffle=True, num_workers=4)
+        valset, batch_size=1, shuffle=True, num_workers=1)
 
     embeddings1, embeddings2, is_same = run(model, val_loader, device)
     embeddings1 = sklearn.preprocessing.normalize(embeddings1)
