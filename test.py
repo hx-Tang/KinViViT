@@ -1,6 +1,6 @@
 import torch
 # from models import vivit
-# pre_train_dict = torch.load('pretrain/deit_small_distilled_patch16_224-649709d9.pth')
+# pre_train_dict = torch.load('weights/deit_small_distilled_patch16_224-649709d9.pth')
 # print(pre_train_dict['model'].keys())
 # model = vivit.ViViT(112, 16, 100, 32)
 # model_dict = model.state_dict()
@@ -14,7 +14,7 @@ from models import video_transformer
 #                                 embed_dims=128,
 #                                 num_heads=16,
 #                                 num_transformer_layers=4,
-#                                 pretrained='pretrain/vivit_model.pth',
+#                                 pretrained='weights/vivit_model.pth',
 #                                 weights_from='kinetics',
 #                                 attention_type='divided_space_time',
 #                                 use_learnable_pos_emb=False,
@@ -33,7 +33,7 @@ from models import video_transformer
 from models import mobilenetv2
 
 model = mobilenetv2.MobileNetV2(num_classes=128, sample_size=112, width_mult=1.).cuda()
-pre_train_dict = torch.load('pretrain/kinetics_mobilenetv2_1.0x_RGB_16_best.pth')
+pre_train_dict = torch.load('weights/kinetics_mobilenetv2_1.0x_RGB_16_best.pth')
 
 dicts = {k[7:]: v for k, v in pre_train_dict['state_dict'].items()}
 

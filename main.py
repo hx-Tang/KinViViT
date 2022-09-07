@@ -52,7 +52,7 @@ def main():
 
         if args.model == '3dcnn':
             model = mobilenetv2.MobileNetV2(num_classes=128, sample_size=112, width_mult=1.)
-            pre_train_dict = torch.load('pretrain/kinetics_mobilenetv2_1.0x_RGB_16_best.pth')
+            pre_train_dict = torch.load('weights/kinetics_mobilenetv2_1.0x_RGB_16_best.pth')
 
             model_dict = {k[7:]: v for k, v in pre_train_dict['state_dict'].items()}
 
@@ -76,7 +76,7 @@ def main():
                                             embed_dims=128,
                                             num_heads=16,
                                             num_transformer_layers=4,
-                                            pretrained='pretrain/vivit_model.pth',
+                                            pretrained='weights/vivit_model.pth',
                                             weights_from='kinetics',
                                             attention_type='divided_space_time',
                                             use_learnable_pos_emb=False,

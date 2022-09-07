@@ -14,17 +14,18 @@ def load_subjects(subject_label, file_details, kinship_labels):
 
     for line in lines:
         details = line.split('\t')
-        subject = {'gender': details[1].strip(), 'age': int(details[2]), 'kin': [], 'files': []}
+        subject = {'gender': details[1].strip(), 'age': int(details[2]), 'kin': {}, 'files': []}
         subjects[details[0]] = subject
 
     lines = read_file(kinship_labels)
     for line in lines:
         kin1 = line[0:3]
         kin2 = line[4:7]
+        relation = line.split('\t')[1][:-1]
         if kin2 not in subjects[kin1]['kin']:
-            subjects[kin1]['kin'].append(kin2)
+            subjects[kin1]['kin'][kin2] = relation
         if kin1 not in subjects[kin2]['kin']:
-            subjects[kin2]['kin'].append(kin1)
+            subjects[kin2]['kin'][kin2] = relation
 
     lines = read_file(file_details)
     for line in lines:
@@ -40,7 +41,7 @@ def gen_triplets(subjects, keys, argu=1):
     labels = []
     j = 0
     for key in keys:
-        pos_list = [k for k in subjects[key]['kin'] if k in keys]
+        pos_list = [k for k in subjects[key]['kin'].keys() if k in keys]
         if len(pos_list) == 0:
             continue
         elif len(pos_list) < argu:
@@ -50,7 +51,7 @@ def gen_triplets(subjects, keys, argu=1):
         j += 1
 
         neg_list = keys[:]
-        for k in subjects[key]['kin'] + [key]:
+        for k in list(subjects[key]['kin'].keys()) + [key]:
             if k in neg_list:
                 neg_list.remove(k)
         if len(neg_list) < argu:
@@ -63,7 +64,6 @@ def gen_triplets(subjects, keys, argu=1):
                 pos = random.sample(subjects[pos_codes[i]]['files'], 1)[0]
                 neg = random.sample(subjects[neg_codes[i]]['files'], 1)[0]
                 labels.append([anchor, pos, neg])
-    print(j)
 
     return labels
 
@@ -205,6 +205,7 @@ if __name__ == '__main__':
     kin_label = 'D:/文档/硕士/Thesis/UvA-NEMO_SMILE_DATABASE/UvA-NEMO_Smile_Database_Kinship_Labels.txt'
 
     subjects = load_subjects(subject_detail, file_detail, kin_label)
+    print(subjects)
 
     # print(len([v['kin'] for k, v in subjects.items() if len(v['kin'])>0]))
 
@@ -219,12 +220,12 @@ if __name__ == '__main__':
         random.shuffle(train_label)
         print(len(train_label))
         # print(len(subjects_code[:int(fold*length*0.2)]+subjects_code[int((fold+1)*length*0.2):]))
-        np.save('../fold_argu/train_label_fold'+str(fold+1)+'.npy', train_label)
+        # np.save('../fold_argu/train_label_fold'+str(fold+1)+'.npy', train_label)
         test_label = gen_triplets(subjects, subjects_code[int(fold*length*0.2):int((fold+1)*length*0.2)], 1)
         random.shuffle(test_label)
         print(len(test_label))
         # print(len(subjects_code[int(fold*length*0.2):int((fold+1)*length*0.2)]))
-        np.save('../fold_argu/test_label_fold'+str(fold+1)+'.npy', test_label)
+        # np.save('../fold_argu/test_label_fold'+str(fold+1)+'.npy', test_label)
 
     # data_path = 'D:/文档/硕士/Thesis/UvA-NEMO_SMILE_DATABASE/aligned'
     #

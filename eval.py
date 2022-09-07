@@ -24,7 +24,7 @@ def eval():
     #                                 embed_dims=128,
     #                                 num_heads=16,
     #                                 num_transformer_layers=4,
-    #                                 pretrained='pretrain/vivit_model.pth',
+    #                                 pretrained='weights/vivit_model.pth',
     #                                 weights_from='kinetics',
     #                                 attention_type='divided_space_time',
     #                                 use_learnable_pos_emb=False,
