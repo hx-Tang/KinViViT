@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 from einops import rearrange, reduce, repeat
 
-from modules.transformer import PatchEmbed, TransformerContainer, get_sine_cosine_pos_emb
-from modules.weight_init import (trunc_normal_, init_from_vit_pretrain_,
+from .modules.transformer import PatchEmbed, TransformerContainer, get_sine_cosine_pos_emb
+from .modules.weight_init import (trunc_normal_, init_from_vit_pretrain_,
                                  init_from_kinetics_pretrain_)
 
 

@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from einops import rearrange, repeat
 from einops.layers.torch import Rearrange
-from modules.module import Attention, PreNorm, FeedForward
+from models.modules.module import Attention, PreNorm, FeedForward
 import numpy as np
 
 

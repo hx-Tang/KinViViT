@@ -8,7 +8,7 @@
 from functools import partial
 from torch import optim as optim
 
-from modules.utils import print_on_rank_zero
+from utils import print_on_rank_zero
 
 
 def build_optimizer(hparams, model, is_pretrain):

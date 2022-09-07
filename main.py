@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from datasets.Uva import UVAtriplet, load_subjects, gen_triplets
-from models import video_transformer, vivit, mobilenetv2
+from models import video_transformer, mobilenetv2
 
 parser = argparse.ArgumentParser(description='for face verification')
 parser.add_argument("-model", help="used model", default='vivit', type=str)
